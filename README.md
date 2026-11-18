@@ -17,7 +17,7 @@ Private chats, group chat, live online status and typing indicators, all powered
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-2a8fd6)
 
-[Live Demo](https://YOUR-APP.onrender.com) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
+[Live Demo](https://telegram-clone-2h5b.onrender.com/) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
 
 </div>
 
