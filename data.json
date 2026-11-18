@@ -1,0 +1,62 @@
+{
+  "users": [
+    {
+      "username": "user1",
+      "hash": "$2a$10$kBiRGT8P9jkgc3lh7BEJV.IqkjFX7P7Kwayqw623502KHUw/qvi/."
+    },
+    {
+      "username": "user2",
+      "hash": "$2a$10$dnefjgrbw/0TmpELWrQCP.GV4n1PlrxEEU/RnYxgMMzoQlYFph6WC"
+    }
+  ],
+  "messages": [
+    {
+      "id": 1795022212954.154,
+      "room": "#general",
+      "from": "user1",
+      "to": "#general",
+      "text": "hello",
+      "time": 1795022212954
+    },
+    {
+      "id": 1795022290363.6658,
+      "room": "user1|user2",
+      "from": "user2",
+      "to": "user1",
+      "text": "hello",
+      "time": 1795022290363
+    },
+    {
+      "id": 1795022308558.5586,
+      "room": "user1|user2",
+      "from": "user1",
+      "to": "user2",
+      "text": "hello",
+      "time": 1795022308558
+    },
+    {
+      "id": 1795022328271.4514,
+      "room": "user1|user2",
+      "from": "user2",
+      "to": "user1",
+      "text": "hi",
+      "time": 1795022328271
+    },
+    {
+      "id": 1795022373453.6077,
+      "room": "user1|user2",
+      "from": "user2",
+      "to": "user1",
+      "text": "hii ra",
+      "time": 1795022373453
+    },
+    {
+      "id": 1795022378161.7559,
+      "room": "user1|user2",
+      "from": "user1",
+      "to": "user2",
+      "text": "chapu ra",
+      "time": 1795022378161
+    }
+  ]
+}

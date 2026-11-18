@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telegram Clone</title>
+<style>
+:root{--bg:#fff;--side:#f4f7fa;--line:#e1e8ee;--text:#16202a;--mute:#6b7c8c;--brand:#2a8fd6;--mine:#d9f0ff;--theirs:#f0f3f6}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1720;--side:#151f2a;--line:#233140;--text:#e8eef4;--mute:#8396a8;--brand:#4aa8ec;--mine:#1d4666;--theirs:#1b2733}}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.45 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh}
+button,input{font:inherit;color:inherit}
+.hidden{display:none!important}
+#auth{display:grid;place-items:center;height:100%}
+.card{width:min(360px,92vw);padding:28px;border:1px solid var(--line);border-radius:14px;background:var(--side)}
+.card h1{font-size:22px;margin-bottom:4px}.card p{color:var(--mute);margin-bottom:18px}
+.card input{width:100%;padding:11px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.btn{width:100%;padding:11px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-weight:600;cursor:pointer}
+.link{background:none;border:0;color:var(--brand);margin-top:12px;cursor:pointer}
+#err{color:#d64545;min-height:20px;margin-bottom:8px;font-size:13px}
+#app{display:grid;grid-template-columns:300px 1fr;height:100%}
+aside{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.me{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:600}
+.me button{background:none;border:0;color:var(--brand);cursor:pointer}
+#search{margin:10px;padding:9px 12px;border:1px solid var(--line);border-radius:20px;background:var(--bg)}
+#chats{overflow:auto;flex:1}
+.chat{display:flex;gap:12px;align-items:center;padding:10px 16px;cursor:pointer;border:0;background:none;width:100%;text-align:left}
+.chat:hover,.chat.on{background:var(--line)}
+.av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;position:relative;flex:none}
+.av.on::after{content:"";position:absolute;right:0;bottom:0;width:11px;height:11px;border-radius:50%;background:#3ccf6e;border:2px solid var(--side)}
+.chat small{color:var(--mute);display:block}
+.badge{margin-left:auto;background:var(--brand);color:#fff;border-radius:10px;padding:0 7px;font-size:12px}
+main{display:flex;flex-direction:column;min-height:0}
+header{padding:13px 18px;border-bottom:1px solid var(--line)}
+header b{display:block}header small{color:var(--mute)}
+#msgs{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:min(520px,78%);padding:8px 12px;border-radius:14px;background:var(--theirs);overflow-wrap:anywhere}
+.m.me{align-self:flex-end;background:var(--mine)}
+.m .n{font-size:12px;font-weight:600;color:var(--brand)}
+.m .t{font-size:11px;color:var(--mute);margin-left:10px;float:right;margin-top:6px}
+form{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--line)}
+form input{flex:1;padding:11px 14px;border:1px solid var(--line);border-radius:22px;background:var(--bg)}
+form button{width:46px;border:0;border-radius:50%;background:var(--brand);color:#fff;cursor:pointer;font-size:18px}
+.empty{margin:auto;color:var(--mute)}
+@media(max-width:700px){#app{grid-template-columns:1fr}#app.chatting aside{display:none}#app:not(.chatting) main{display:none}}
+</style>
+</head>
+<body>
+<section id="auth">
+  <div class="card">
+    <h1 id="title">Log in</h1><p>Fast, simple messaging.</p>
+    <input id="u" placeholder="Username" autocomplete="username">
+    <input id="p" type="password" placeholder="Password" autocomplete="current-password">
+    <div id="err"></div>
+    <button class="btn" id="go">Log in</button>
+    <button class="link" id="swap">New here? Create an account</button>
+  </div>
+</section>
+
+<section id="app" class="hidden">
+  <aside>
+    <div class="me"><span id="meName"></span><button id="out">Log out</button></div>
+    <input id="search" placeholder="Search chats">
+    <div id="chats"></div>
+  </aside>
+  <main>
+    <header><b id="hName"></b><small id="hSub"></small></header>
+    <div id="msgs"></div>
+    <form id="f"><input id="text" placeholder="Write a message" autocomplete="off"><button aria-label="Send">&#10148;</button></form>
+  </main>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+let mode = 'login', me = localStorage.me, socket, peer = '#general', users = [], unread = {}, typingTimer;
+const colors = ['#e17076','#7bc862','#e5ca77','#65aadd','#a695e7','#ee7aae','#6ec9cb','#faa774'];
+const color = (n) => colors[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length];
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+$('#swap').onclick = () => {
+  mode = mode === 'login' ? 'register' : 'login';
+  $('#title').textContent = $('#go').textContent = mode === 'login' ? 'Log in' : 'Create account';
+  $('#swap').textContent = mode === 'login' ? 'New here? Create an account' : 'Have an account? Log in';
+};
+$('#go').onclick = async () => {
+  const res = await fetch('/api/' + mode, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: $('#u').value.trim(), password: $('#p').value }) });
+  const data = await res.json();
+  if (!res.ok) return ($('#err').textContent = data.error);
+  localStorage.token = data.token; localStorage.me = me = data.username; start();
+};
+$('#out').onclick = () => { localStorage.clear(); location.reload(); };
+
+function start() {
+  $('#auth').classList.add('hidden'); $('#app').classList.remove('hidden');
+  $('#meName').textContent = me;
+  socket = io({ auth: { token: localStorage.token } });
+  socket.on('connect_error', () => { localStorage.clear(); location.reload(); });
+  socket.on('users', (list) => { users = list.filter((x) => x.username !== me); renderChats(); updateHeader(); });
+  socket.on('message', (m) => {
+    const other = m.from === me ? m.to : m.to === '#general' ? '#general' : m.from;
+    if (other === peer) { addMsg(m); } else { unread[other] = (unread[other] || 0) + 1; renderChats(); }
+  });
+  socket.on('typing', (u) => {
+    if (u !== peer) return;
+    $('#hSub').textContent = 'typing...'; clearTimeout(typingTimer); typingTimer = setTimeout(updateHeader, 1500);
+  });
+  openChat('#general');
+}
+
+function renderChats() {
+  const q = $('#search').value.toLowerCase();
+  const items = [{ username: '#general', label: 'General', sub: 'Everyone', online: false }]
+    .concat(users.map((u) => ({ ...u, label: u.username, sub: u.online ? 'online' : 'offline' })))
+    .filter((c) => c.label.toLowerCase().includes(q));
+  $('#chats').innerHTML = items.map((c) => `<button class="chat ${c.username === peer ? 'on' : ''}" data-u="${esc(c.username)}">
+    <span class="av ${c.online ? 'on' : ''}" style="background:${color(c.username)}">${esc(c.label[0].toUpperCase())}</span>
+    <span><b>${esc(c.label)}</b><small>${c.sub}</small></span>
+    ${unread[c.username] ? `<span class="badge">${unread[c.username]}</span>` : ''}</button>`).join('');
+  document.querySelectorAll('.chat').forEach((b) => (b.onclick = () => openChat(b.dataset.u)));
+}
+function updateHeader() {
+  $('#hName').textContent = peer === '#general' ? 'General' : peer;
+  const u = users.find((x) => x.username === peer);
+  $('#hSub').textContent = peer === '#general' ? 'Group chat for everyone' : u && u.online ? 'online' : 'offline';
+}
+function openChat(p) {
+  peer = p; unread[p] = 0; $('#app').classList.add('chatting');
+  $('#msgs').innerHTML = ''; updateHeader(); renderChats();
+  socket.emit('history', p, (list) => {
+    list.forEach(addMsg);
+    if (!list.length) $('#msgs').innerHTML = '<div class="empty">No messages yet. Say hello!</div>';
+  });
+}
+function addMsg(m) {
+  const box = $('#msgs'); box.querySelector('.empty')?.remove();
+  const mine = m.from === me;
+  const el = document.createElement('div'); el.className = 'm' + (mine ? ' me' : '');
+  el.innerHTML = (!mine && peer === '#general' ? `<div class="n">${esc(m.from)}</div>` : '') +
+    `${esc(m.text)}<span class="t">${fmt(m.time)}</span>`;
+  box.appendChild(el); box.scrollTop = box.scrollHeight;
+}
+$('#f').onsubmit = (e) => { e.preventDefault(); const t = $('#text').value.trim();
+  if (t) socket.emit('message', { to: peer, text: t }); $('#text').value = ''; };
+$('#text').oninput = () => socket.emit('typing', peer);
+$('#search').oninput = renderChats;
+$('#hName').onclick = () => $('#app').classList.remove('chatting');
+if (localStorage.token) start();
+</script>
+</body>
+</html>
